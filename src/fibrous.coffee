@@ -1,5 +1,7 @@
-Fiber = require 'fibers'
-Future = require 'fibers/future'
+Fiber = require 'shared-fibers'
+Future = require 'shared-fibers/future'
+
+variant = 'aceface'
 
 # We replace Future's version of Function.prototype.future with our own.
 # Keep a reference so we can use theirs later.
@@ -59,8 +61,22 @@ proxyBuilder = (futureOrSync) ->
   (that) ->
     result =
       if typeof(that) is 'function'
-        func = (futureOrSync is 'future' and futureize or synchronize)(that)
-        func.__proto__ = Object.getPrototypeOf(that)[futureOrSync] if Object.getPrototypeOf(that) isnt Function.prototype
+
+        ize = futureOrSync is 'future' and futureize or synchronize
+        func = ize that
+        proto = Object.getPrototypeOf(that)[futureOrSync] if Object.getPrototypeOf(that) isnt Function.prototype
+        func.__proto__ = proto
+
+        Object.defineProperty func, 'Array',
+          enumerable: true
+          configurable: true
+          get: ->
+            delete func.Array
+            func.Array = ize (((f, this_) ->
+                (args..., callback) ->
+                  args.push (err, cbArgs...) ->
+                    callback err, cbArgs
+                  f.apply this_, args) that, that)
         func
       else
         Object.create(Object.getPrototypeOf(that) and Object.getPrototypeOf(that)[futureOrSync] or Object::)
@@ -141,3 +157,8 @@ fibrous.run = (fn, cb) ->
 
 # Export Future for fibrous users
 fibrous.Future = Future
+
+pkgInfo = require '../package'
+fibrous.version = pkgInfo.version
+if variant?
+  fibrous.version += "-#{ variant }"
