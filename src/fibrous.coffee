@@ -1,7 +1,9 @@
 Fiber = require 'shared-fibers'
 Future = require 'shared-fibers/future'
+crayon = require 'crayon'
 
 variant = 'aceface'
+
 
 # We replace Future's version of Function.prototype.future with our own.
 # Keep a reference so we can use theirs later.
@@ -91,15 +93,21 @@ proxyBuilder = (futureOrSync) ->
 
 defineMemoizedPerInstanceProperty = (target, propertyName, factory) ->
   cacheKey = "__fibrous#{propertyName}__"
-  Object.defineProperty target, propertyName,
-    enumerable: false
-    set: (value) ->
-      delete @[cacheKey]
-      Object.defineProperty @, propertyName, value: value, writable:true, configurable: true, enumerable: true # allow overriding the property turning back to default behavior
-    get: ->
-      unless Object::hasOwnProperty.call(@, cacheKey) and @[cacheKey]
-        Object.defineProperty @, cacheKey, value: factory(@), writable: true, configurable: true, enumerable: false # ensure the cached version is not enumerable
-      @[cacheKey]
+  try
+    Object.defineProperty target, propertyName,
+      enumerable: false
+      configurable: true
+      set: (value) ->
+        delete @[cacheKey]
+        Object.defineProperty @, propertyName, value: value, writable:true, configurable: true, enumerable: true # allow overriding the property turning back to default behavior
+      get: ->
+        unless Object::hasOwnProperty.call(@, cacheKey) and @[cacheKey]
+          Object.defineProperty @, cacheKey, value: factory(@), writable: true, configurable: true, enumerable: false # ensure the cached version is not enumerable
+        @[cacheKey]
+  catch e
+    crayon.bgNavy.salmon.warn "defineMemoizedPerInstanceProperty problem", e
+    # Is it OK to just leave it as is?
+
 
 # Mixin sync and future to Object and Function
 for base in [Object::, Function::]

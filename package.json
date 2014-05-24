@@ -37,6 +37,7 @@
     "MIT"
   ],
   "dependencies": {
+    "crayon": "git://github.com/aceface/crayon",
     "shared-fibers": "aceface/shared-fibers"
   },
   "devDependencies": {
